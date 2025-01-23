@@ -2,6 +2,5 @@ metadata-chatbot==0.0.80
 streamlit
 streamlit-feedback
 asyncio
-uuid
 langchain_core
 langgraph
