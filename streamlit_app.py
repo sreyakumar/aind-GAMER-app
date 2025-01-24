@@ -201,6 +201,15 @@ async def main():
 
     st.session_state.query = ''    
 
+    with open('response_feedback.log', 'r') as file:
+        log_contents = file.read()
+        st.download_button(
+            label="Download Feedback Log",
+            data=log_contents,
+            file_name="response_feedback.log",
+            mime="text/plain"
+        )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
