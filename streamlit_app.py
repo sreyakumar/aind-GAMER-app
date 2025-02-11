@@ -7,7 +7,7 @@ import uuid
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from metadata_chatbot.agents.async_workflow import async_workflow
-from metadata_chatbot.agents.react_agent import astream_input
+from metadata_chatbot.agents.mongo_db_agent import astream_input
 
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -61,7 +61,7 @@ async def answer_generation(query: str, chat_history: list, config:dict, model):
                             yield f"""```json
                                     {result['content']}
                                     ```"""
-                        if response == 'final_answer':
+                        if response == 'GAMER':
                             yield result['content']
                 except Exception as e:
                     yield f"An error has occured with the retrieval from DocDB: {e}. Try structuring your query another way."
