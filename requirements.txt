@@ -1,6 +1,7 @@
-metadata-chatbot==0.2.0
+metadata-chatbot==0.2.2
 streamlit
 streamlit-feedback
 asyncio
 langchain_core
 langgraph
+sentence_transformers
