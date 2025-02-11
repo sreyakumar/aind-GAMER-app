@@ -1,4 +1,4 @@
-metadata-chatbot==0.0.80
+metadata-chatbot==0.2.0
 streamlit
 streamlit-feedback
 asyncio
