@@ -61,7 +61,7 @@ async def answer_generation(query: str, chat_history: list, config:dict, model):
                             yield f"""```json
                                     {result['content']}
                                     ```"""
-                        if response == 'GAMER':
+                        if response == 'final_answer':
                             yield result['content']
                 except Exception as e:
                     yield f"An error has occured with the retrieval from DocDB: {e}. Try structuring your query another way."
