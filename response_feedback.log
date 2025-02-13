@@ -40,3 +40,40 @@ It's worth noting that there's a significant range in the frequency of different
 2025-01-23 15:52:54,976 - Query: generate a paragraph summary of subject 608552
 2025-01-23 15:52:54,976 - Response: Subject 608552 is a female Mus musculus (house mouse) born on November 4, 2021. The subject's genotype is Camk2a-tTA/wt;tetO-GCaMP6s/wt, indicating it carries transgenes for the tetracycline-controlled transactivator (tTA) under the Camk2a promoter and the calcium indicator GCaMP6s under tetracycline-responsive promoter elements. The mouse was bred at the Allen Institute, with its mother (ID: 584262) having a Camk2a-tTA/wt genotype and its father's ID being 574377. The subject has undergone multiple experimental sessions involving stimulus epochs, including single neuron BCI conditioning, with various imaging data collected (as evidenced by numerous TIFF files). Water was used as a reward during these sessions, delivered through a centrally positioned lickspout.
 2025-01-23 15:54:43,963 - Query: generate a paragraph summary of subject 608552, focusing on the rig/instrument/sessiion/subject
+2025-02-12 16:04:09,042 - Query: What are the modalities that exist in the database? What are the least and most common ones?
+2025-02-12 16:04:09,043 - Response: Based on the query results, I can provide you with information about the modalities that exist in the database and their relative frequencies. Here's a summary:
+
+<start>
+Behavior: 19855
+Behavior videos: 10950
+Selective plane illumination microscopy: 4803
+Extracellular electrophysiology: 4519
+Fiber photometry: 3871
+Planar optical physiology: 1363
+Hyperspectral fiber photometry: 105
+Trained behavior: 28
+Electromyography: 10
+Electrophysiology: 9
+Dual inverted selective plane illumination microscopy: 6
+</start>
+
+To answer your specific questions:
+
+1. The modalities that exist in the database are:
+   - Behavior
+   - Behavior videos
+   - Selective plane illumination microscopy
+   - Extracellular electrophysiology
+   - Fiber photometry
+   - Planar optical physiology
+   - Hyperspectral fiber photometry
+   - Trained behavior
+   - Electromyography
+   - Electrophysiology
+   - Dual inverted selective plane illumination microscopy
+
+2. The most common modality is Behavior, with 19,855 instances.
+
+3. The least common modality is Dual inverted selective plane illumination microscopy, with only 6 instances.
+
+It's worth noting that there's a significant range in the frequency of these modalities. The top three (Behavior, Behavior videos, and Selective plane illumination microscopy) are much more common than the others, while the bottom three (Electromyography, Electrophysiology, and Dual inverted selective plane illumination microscopy) are relatively rare in this database.
