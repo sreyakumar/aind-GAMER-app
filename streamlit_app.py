@@ -146,10 +146,8 @@ async def main():
     if query is not None and query != "":
         st.session_state.messages.append(HumanMessage(query))
 
-        # with st.chat_message("user"):
-        #     st.markdown(query)
-
-        st.chat_message("user").write(query)
+        with st.chat_message("user"):
+            st.markdown(query)
 
         with st.chat_message("assistant"):
             config = {
