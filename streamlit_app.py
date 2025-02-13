@@ -95,7 +95,7 @@ async def main():
         st.session_state.query = ""
 
     if "run_id" not in st.session_state:
-        st.session_state.query = None
+        st.session_state.run_id= None
 
     st.info(
         "Ask a question about the AIND metadata! "
