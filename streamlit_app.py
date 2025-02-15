@@ -1,6 +1,5 @@
 import asyncio
 import os
-import time
 import uuid
 import warnings
 
@@ -15,9 +14,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langsmith import Client
 from streamlit_feedback import streamlit_feedback
 
-from metadata_chatbot.agents.async_workflow import async_workflow
-from metadata_chatbot.agents.mongo_db_agent import astream_input
-
+from metadata_chatbot.GAMER.workflow import stream_response, workflow
 
 warnings.filterwarnings("ignore")
 
@@ -29,53 +26,34 @@ def load_checkpointer():
     return MemorySaver()
 
 
-async def answer_generation(
-    query: str, chat_history: list, config: dict, model
-):
+async def answer_generation(chat_history: list, config: dict, app):
+    """Streams GAMERS' node responses"""
     inputs = {
         "messages": chat_history,
     }
-    async for output in model.astream(inputs, config):
-        for key, value in output.items():
-            if key != "database_query":
-                yield value["messages"][0].content
-            else:
-                try:
-                    query = str(chat_history) + query
-                    async for result in astream_input(query=query):
-                        response = result["type"]
-                        if response == "intermediate_steps":
-                            yield result["content"]
-                        if response == "agg_pipeline":
-                            yield "The MongoDB pipeline used is:"
-                            yield f"`{result['content']}`"
-                        if response == "tool_response":
-                            yield "Retrieved output from MongoDB:"
-                            yield f"""```json
-                                    {result['content']}
-                                    ```"""
-                        if response == "final_answer":
-                            yield result["content"]
-                except Exception as e:
-                    yield (
-                        "An error has occured with the retrieval from DocDB: "
-                        f"{e}. Try structuring your query another way."
-                    )
+
+    try:
+        async for result in stream_response(inputs, config, app):
+            yield result["content"]
+
+    except Exception as e:
+        yield (
+            "An error has occured with the retrieval from DocDB: "
+            f"{e}. Try structuring your query another way."
+        )
 
 
 def set_query(query):
+    """Set query in session state, for buttons"""
     st.session_state.query = query
 
 
 async def main():
+    """Main script to launch Streamlit UI"""
     st.title("GAMER: Generative Analysis of Metadata Retrieval")
 
-    langchain_api_key = os.getenv(
-        "LANGCHAIN_API_KEY"
-    )  # st.secrets.get("LANGCHAIN_API_KEY")
-    langchain_endpoint = os.getenv(
-        "LANGCHAIN_ENDPOINT"
-    )  # "https://api.smith.langchain.com"
+    langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
+    langchain_endpoint = os.getenv("LANGCHAIN_ENDPOINT")
     project = os.getenv("LANGSMITH_PROJECT")
     client = Client(api_url=langchain_endpoint, api_key=langchain_api_key)
 
@@ -89,13 +67,13 @@ async def main():
     st.session_state.thread_id = str(uuid.uuid4())
 
     checkpointer = load_checkpointer()
-    model = async_workflow.compile(checkpointer=checkpointer)
+    model = workflow.compile(checkpointer=checkpointer)
 
     if "query" not in st.session_state:
         st.session_state.query = ""
 
     if "run_id" not in st.session_state:
-        st.session_state.run_id= None
+        st.session_state.run_id = None
 
     st.info(
         "Ask a question about the AIND metadata! "
@@ -157,13 +135,14 @@ async def main():
             }
             prev = None
             generation = None
+
             chat_history = st.session_state.messages
             with collect_runs() as cb:
                 with st.status(
                     "Generating answer...", expanded=True
                 ) as status:
                     async for result in answer_generation(
-                        query, chat_history, config, model
+                        chat_history, config, model
                     ):
                         if prev is not None:
                             st.markdown(prev)
@@ -174,12 +153,6 @@ async def main():
                     st.session_state.messages.append(AIMessage(generation))
             final_response = st.empty()
             final_response.markdown(generation)
-                
-
-    @st.cache_data(ttl="2h", show_spinner=False)
-    def get_run_url(run_id):
-        time.sleep(1)
-        return client.read_run(run_id).url
 
     if st.session_state.get("run_id"):
         run_id = st.session_state.run_id
