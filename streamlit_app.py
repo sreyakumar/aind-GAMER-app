@@ -27,14 +27,16 @@ def load_checkpointer():
     return MemorySaver()
 
 
-async def answer_generation(chat_history: list, config: dict, app):
+async def answer_generation(chat_history: list, config: dict, app, prev_generation):
     """Streams GAMERS' node responses"""
     inputs = {
         "messages": chat_history,
     }
 
     try:
-        async for result in stream_response(inputs, config, app):
+
+        async for result in stream_response(inputs, config, app, prev_generation):
+
             yield result
 
     except Exception as e:
@@ -62,12 +64,17 @@ def initialize_session_state():
         checkpointer = load_checkpointer()
         st.session_state.model = workflow.compile(checkpointer=checkpointer)
 
+    if "generation" not in st.session_state:
+        st.session_state.generation = None
+
 async def typewriter_stream(result, container):
     full_response = ""
     text_content = result["content"]
 
     if result['type'] == "tool_output":
-        text_content = json.loads(text_content )
+
+        text_content = json.loads(text_content)
+
     stream = text_content
 
     if not isinstance(text_content, str):
@@ -157,15 +164,20 @@ async def main():
             generation = None
             message_stream = []
 
+            prev_generation = st.session_state.generation
+
+
             chat_history = st.session_state.messages
             with collect_runs() as cb:
                 with st.status(
                     "Generating answer...", expanded=True
                 ) as status:
                     async for result in answer_generation(
-                        chat_history, config, st.session_state.model
+
+                        chat_history, config, st.session_state.model, prev_generation
                     ):
-                        if result["type"] == "final_answer":
+                        if result["type"] == "final_response":
+
                             generation = result
                         else:
                             temp_container = st.empty()
@@ -176,9 +188,9 @@ async def main():
                     status.update(label="Answer generation successful.")
                     st.session_state.run_id = cb.traced_runs[-1].id
 
-                    if generation is None:
-                        generation = message_stream[-1]
                     st.session_state.messages.append(AIMessage(generation['content']))
+                    st.session_state.generation = generation['content']
+
             final_response = st.empty()
             await typewriter_stream(generation, final_response)
             # final_response.write(generation)
