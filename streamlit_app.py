@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import uuid
 import warnings
@@ -34,7 +35,7 @@ async def answer_generation(chat_history: list, config: dict, app):
 
     try:
         async for result in stream_response(inputs, config, app):
-            yield result["content"]
+            yield result
 
     except Exception as e:
         yield (
@@ -46,6 +47,39 @@ async def answer_generation(chat_history: list, config: dict, app):
 def set_query(query):
     """Set query in session state, for buttons"""
     st.session_state.query = query
+
+
+def initialize_session_state():
+    if "thread_id" not in st.session_state:
+        st.session_state.thread_id = str(uuid.uuid4())
+    if "query" not in st.session_state:
+        st.session_state.query = ""
+    if "run_id" not in st.session_state:
+        st.session_state.run_id = None
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "model" not in st.session_state:
+        checkpointer = load_checkpointer()
+        st.session_state.model = workflow.compile(checkpointer=checkpointer)
+
+async def typewriter_stream(result, container):
+    full_response = ""
+    text_content = result["content"]
+
+    if result['type'] == "tool_output":
+        text_content = json.loads(text_content )
+    stream = text_content
+
+    if not isinstance(text_content, str):
+        stream = str(text_content)
+
+    for word in stream.split():
+        full_response += word + " "
+        container.write(full_response + " ")
+        await asyncio.sleep(
+            0.06
+        )
+    container.write(text_content)
 
 
 async def main():
@@ -62,18 +96,7 @@ async def main():
     cfg = RunnableConfig()
     cfg["callbacks"] = [ls_tracer, run_collector]
 
-    if "thread_id" not in st.session_state:
-        st.session_state.thread_id = ""
-    st.session_state.thread_id = str(uuid.uuid4())
-
-    checkpointer = load_checkpointer()
-    model = workflow.compile(checkpointer=checkpointer)
-
-    if "query" not in st.session_state:
-        st.session_state.query = ""
-
-    if "run_id" not in st.session_state:
-        st.session_state.run_id = None
+    initialize_session_state()
 
     st.info(
         "Ask a question about the AIND metadata! "
@@ -109,9 +132,6 @@ async def main():
     if user_query:
         st.session_state.query = user_query
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
     for message in st.session_state.messages:
         if isinstance(message, HumanMessage):
             with st.chat_message("user"):
@@ -133,8 +153,9 @@ async def main():
             config = {
                 "configurable": {"thread_id": st.session_state.thread_id}
             }
-            prev = None
+            # prev = None
             generation = None
+            message_stream = []
 
             chat_history = st.session_state.messages
             with collect_runs() as cb:
@@ -142,17 +163,25 @@ async def main():
                     "Generating answer...", expanded=True
                 ) as status:
                     async for result in answer_generation(
-                        chat_history, config, model
+                        chat_history, config, st.session_state.model
                     ):
-                        if prev is not None:
-                            st.markdown(prev)
-                        prev = result
-                        generation = prev
+                        if result["type"] == "final_answer":
+                            generation = result
+                        else:
+                            temp_container = st.empty()
+                            await typewriter_stream(result, temp_container)
+
+                            message_stream.append(result)
+
                     status.update(label="Answer generation successful.")
                     st.session_state.run_id = cb.traced_runs[-1].id
-                    st.session_state.messages.append(AIMessage(generation))
+
+                    if generation is None:
+                        generation = message_stream[-1]
+                    st.session_state.messages.append(AIMessage(generation['content']))
             final_response = st.empty()
-            final_response.markdown(generation)
+            await typewriter_stream(generation, final_response)
+            # final_response.write(generation)
 
     if st.session_state.get("run_id"):
         run_id = st.session_state.run_id
