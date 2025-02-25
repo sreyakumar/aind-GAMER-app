@@ -34,7 +34,9 @@ async def answer_generation(chat_history: list, config: dict, app, prev_generati
     }
 
     try:
+
         async for result in stream_response(inputs, config, app, prev_generation):
+
             yield result
 
     except Exception as e:
@@ -61,6 +63,7 @@ def initialize_session_state():
     if "model" not in st.session_state:
         checkpointer = load_checkpointer()
         st.session_state.model = workflow.compile(checkpointer=checkpointer)
+
     if "generation" not in st.session_state:
         st.session_state.generation = None
 
@@ -69,7 +72,9 @@ async def typewriter_stream(result, container):
     text_content = result["content"]
 
     if result['type'] == "tool_output":
+
         text_content = json.loads(text_content)
+
     stream = text_content
 
     if not isinstance(text_content, str):
@@ -158,7 +163,9 @@ async def main():
             # prev = None
             generation = None
             message_stream = []
+
             prev_generation = st.session_state.generation
+
 
             chat_history = st.session_state.messages
             with collect_runs() as cb:
@@ -166,9 +173,11 @@ async def main():
                     "Generating answer...", expanded=True
                 ) as status:
                     async for result in answer_generation(
+
                         chat_history, config, st.session_state.model, prev_generation
                     ):
                         if result["type"] == "final_response":
+
                             generation = result
                         else:
                             temp_container = st.empty()
@@ -181,6 +190,7 @@ async def main():
 
                     st.session_state.messages.append(AIMessage(generation['content']))
                     st.session_state.generation = generation['content']
+
             final_response = st.empty()
             await typewriter_stream(generation, final_response)
             # final_response.write(generation)
