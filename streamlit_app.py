@@ -27,6 +27,49 @@ load_dotenv()
 def load_checkpointer():
     return MemorySaver()
 
+@st.cache_resource
+def load_app(checkpointer):
+    """Cache the compiled workflow model"""
+    checkpointer = load_checkpointer()
+    return workflow.compile(checkpointer=checkpointer)
+
+@st.cache_resource
+def get_langchain_client():
+    """Cache the LangChain client"""
+    langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
+    langchain_endpoint = os.getenv("LANGCHAIN_ENDPOINT")
+    return Client(api_url=langchain_endpoint, api_key=langchain_api_key)
+
+@st.cache_resource
+def get_langchain_tracer(project):
+    """Cache the LangChain tracer for a specific project"""
+    client = get_langchain_client()
+    return LangChainTracer(project_name=project, client=client)
+
+@st.cache_data
+def get_example_questions():
+    """Cache example questions"""
+    return [
+        (
+            "What are the modalities that exist in the database? "
+            "What are the least and most common ones?"
+        ),
+        (
+            "What is the MongoDB query to find the injections used in "
+            "SmartSPIM_675387_2023-05-23_23-05-56"
+        ),
+        (
+            "Can you list all the procedures performed on 662616, "
+            "including their start and end dates?"
+        ),
+    ]
+
+
+
+async def answer_generation(
+    chat_history: list, config: dict, app, prev_generation
+):
+
 
 
 async def answer_generation(
@@ -76,8 +119,8 @@ def initialize_session_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "model" not in st.session_state:
-        checkpointer = load_checkpointer()
-        st.session_state.model = workflow.compile(checkpointer=checkpointer)
+        st.session_state.model = load_app()
+
     if "generation" not in st.session_state:
         st.session_state.generation = None
 
@@ -109,13 +152,11 @@ async def main():
     """Main script to launch Streamlit UI"""
     # st.title("GAMER: Generative Analysis of Metadata Retrieval")
 
-    langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
-    langchain_endpoint = os.getenv("LANGCHAIN_ENDPOINT")
     project = os.getenv("LANGSMITH_PROJECT")
-    client = Client(api_url=langchain_endpoint, api_key=langchain_api_key)
 
-    ls_tracer = LangChainTracer(project_name=project, client=client)
+    ls_tracer = get_langchain_tracer(project)
     run_collector = RunCollectorCallbackHandler()
+
     cfg = RunnableConfig()
     cfg["callbacks"] = [ls_tracer, run_collector]
 
@@ -136,6 +177,7 @@ async def main():
 
             developer_mode = st.toggle("Developer mode")
 
+
         (
             "[Model architecture repository]"
             "(https://github.com/AllenNeuralDynamics/metadata-chatbot)"
@@ -147,20 +189,7 @@ async def main():
 
     st.info("Type a query to start or pick one of these suggestions:")
 
-    examples = [
-        (
-            "What are the modalities that exist in the database? "
-            "What are the least and most common ones?"
-        ),
-        (
-            "What is the MongoDB query to find the injections used in "
-            "SmartSPIM_675387_2023-05-23_23-05-56"
-        ),
-        (
-            "Can you list all the procedures performed on 662616, "
-            "including their start and end dates?"
-        ),
-    ]
+    examples = get_example_questions()
 
     columns = st.columns(len(examples))
     for i, column in enumerate(columns):
@@ -273,6 +302,8 @@ async def main():
 
             if score is not None:
                 feedback_type_str = f"FACES: {feedback['score']}"
+
+                client = get_langchain_client()
 
                 feedback_record = client.create_feedback(
                     run_id,
