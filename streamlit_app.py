@@ -28,18 +28,22 @@ def load_checkpointer():
     return MemorySaver()
 
 
+
 async def answer_generation(
     chat_history: list, config: dict, app, prev_generation
 ):
+
     """Streams GAMERS' node responses"""
     inputs = {
         "messages": chat_history,
     }
 
     try:
+
         async for result in stream_response(
             inputs, config, app, prev_generation
         ):
+
             yield result
 
     except Exception as e:
@@ -78,6 +82,9 @@ def initialize_session_state():
         st.session_state.generation = None
 
 
+    if "generation" not in st.session_state:
+        st.session_state.generation = None
+
 async def typewriter_stream(result, container):
     full_response = ""
     text_content = result["content"]
@@ -94,6 +101,7 @@ async def typewriter_stream(result, container):
             full_response += word + " "
             container.write(full_response + " ")
             await asyncio.sleep(0.05)
+
     container.write(text_content)
 
 
@@ -193,11 +201,15 @@ async def main():
             message_stream = []
             prev_generation = st.session_state.generation
 
+            prev_generation = st.session_state.generation
+
+
             chat_history = st.session_state.messages
             with collect_runs() as cb:
 
                 if developer_mode:
                     async for result in answer_generation(
+
                         chat_history,
                         config,
                         st.session_state.model,
@@ -239,6 +251,7 @@ async def main():
                     st.session_state.generation = generation["content"]
                     final_response = st.empty()
                     await typewriter_stream(generation, final_response)
+
             # final_response.write(generation)
 
     if st.session_state.get("run_id"):
