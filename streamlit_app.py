@@ -70,6 +70,12 @@ async def answer_generation(
     chat_history: list, config: dict, app, prev_generation
 ):
 
+
+
+async def answer_generation(
+    chat_history: list, config: dict, app, prev_generation
+):
+
     """Streams GAMERS' node responses"""
     inputs = {
         "messages": chat_history,
@@ -114,6 +120,7 @@ def initialize_session_state():
         st.session_state.messages = []
     if "model" not in st.session_state:
         st.session_state.model = load_app()
+
     if "generation" not in st.session_state:
         st.session_state.generation = None
 
@@ -169,6 +176,7 @@ async def main():
             )
 
             developer_mode = st.toggle("Developer mode")
+
 
         (
             "[Model architecture repository]"
