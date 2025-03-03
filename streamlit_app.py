@@ -28,7 +28,7 @@ def load_checkpointer():
     return MemorySaver()
 
 @st.cache_resource
-def load_app(checkpointer):
+def load_app():
     """Cache the compiled workflow model"""
     checkpointer = load_checkpointer()
     return workflow.compile(checkpointer=checkpointer)
@@ -64,11 +64,6 @@ def get_example_questions():
         ),
     ]
 
-
-
-async def answer_generation(
-    chat_history: list, config: dict, app, prev_generation
-):
 
 
 
