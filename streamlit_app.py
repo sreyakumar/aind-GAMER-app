@@ -1,9 +1,10 @@
+"""Streamlit app for GAMER"""
+
 import asyncio
 import json
 import os
 import uuid
 import warnings
-from typing import AsyncGenerator
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -25,13 +26,16 @@ load_dotenv()
 
 @st.cache_resource
 def load_checkpointer():
+    """Load langchain persistence"""
     return MemorySaver()
+
 
 @st.cache_resource
 def load_app():
     """Cache the compiled workflow model"""
     checkpointer = load_checkpointer()
     return workflow.compile(checkpointer=checkpointer)
+
 
 @st.cache_resource
 def get_langchain_client():
@@ -40,11 +44,13 @@ def get_langchain_client():
     langchain_endpoint = os.getenv("LANGCHAIN_ENDPOINT")
     return Client(api_url=langchain_endpoint, api_key=langchain_api_key)
 
+
 @st.cache_resource
 def get_langchain_tracer(project):
     """Cache the LangChain tracer for a specific project"""
     client = get_langchain_client()
     return LangChainTracer(project_name=project, client=client)
+
 
 @st.cache_data
 def get_example_questions():
@@ -65,23 +71,18 @@ def get_example_questions():
     ]
 
 
-
-
 async def answer_generation(
     chat_history: list, config: dict, app, prev_generation
 ):
-
     """Streams GAMERS' node responses"""
     inputs = {
         "messages": chat_history,
     }
 
     try:
-
         async for result in stream_response(
             inputs, config, app, prev_generation
         ):
-
             yield result
 
     except Exception as e:
@@ -91,20 +92,13 @@ async def answer_generation(
         )
 
 
-def to_sync_generator(async_gen: AsyncGenerator):
-    while True:
-        try:
-            yield asyncio.run(anext(async_gen))
-        except StopAsyncIteration:
-            break
-
-
 def set_query(query):
     """Set query in session state, for buttons"""
     st.session_state.query = query
 
 
 def initialize_session_state():
+    """Initialize st session states"""
     if "thread_id" not in st.session_state:
         st.session_state.thread_id = str(uuid.uuid4())
     if "query" not in st.session_state:
@@ -112,18 +106,15 @@ def initialize_session_state():
     if "run_id" not in st.session_state:
         st.session_state.run_id = None
     if "messages" not in st.session_state:
-        st.session_state.messages = []
+        st.session_state.messages = [AIMessage("Hello! How can I help you?")]
     if "model" not in st.session_state:
         st.session_state.model = load_app()
-
     if "generation" not in st.session_state:
         st.session_state.generation = None
 
-
-    if "generation" not in st.session_state:
-        st.session_state.generation = None
 
 async def typewriter_stream(result, container):
+    """Enables streaming effect on st text content"""
     full_response = ""
     text_content = result["content"]
 
@@ -139,7 +130,6 @@ async def typewriter_stream(result, container):
             full_response += word + " "
             container.write(full_response + " ")
             await asyncio.sleep(0.05)
-
     container.write(text_content)
 
 
@@ -160,17 +150,27 @@ async def main():
     with st.sidebar:
 
         st.header("GAMER: Generative Analysis of Metadata Retrieval")
-        "Ask a question about the AIND metadata! "
         "Please note that it will take a few seconds to generate an answer."
 
         with st.popover(
-            ":material/settings: Configurations", use_container_width=True
+            "Configurations :material/settings:", use_container_width=True
         ):
             data_routes = st.selectbox(
                 "Ask a question about the", options=("Metadata", "Data schema")
             )
 
             developer_mode = st.toggle("Developer mode")
+
+        with st.popover(
+            "Prompt engineering guide :memo:", use_container_width=True
+        ):
+            st.markdown(
+                "For complex retrievals, ensure that your query clearly labels the information "
+                "you seek (e.g. writing out the full project name to prevent ambiguity). "
+                "If the chat history starts to become fuzzy, please refresh the tab. "
+                "Note that GAMER will not retain previous contexts if this action is taken."
+                "Please leave feeback through the faces you see after a response is generated!"
+            )
 
 
         (
@@ -191,10 +191,10 @@ async def main():
         with column:
             st.button(examples[i], on_click=set_query, args=[examples[i]])
 
-    message = st.chat_message("assistant")
-    message.write("Hello! How can I help you?")
+    # message = st.chat_message("assistant")
+    # message.write("Hello! How can I help you?")
 
-    user_query = st.chat_input("Message GAMER")
+    user_query = st.chat_input("Ask a question about the AIND metadata!")
 
     if user_query:
         st.session_state.query = user_query
@@ -225,47 +225,69 @@ async def main():
             message_stream = []
             prev_generation = st.session_state.generation
 
-            prev_generation = st.session_state.generation
-
-
             chat_history = st.session_state.messages
             with collect_runs() as cb:
 
                 if developer_mode:
                     async for result in answer_generation(
-
                         chat_history,
                         config,
                         st.session_state.model,
                         prev_generation,
                     ):
                         with st.spinner("Generating answer..."):
-                            if result["type"] == "final_response":
-                                generation = result
-                            else:
-                                temp_container = st.empty()
-                                await typewriter_stream(result, temp_container)
-                                message_stream.append(result)
+                            try:
+                                if result["type"] == "final_response":
+                                    generation = result
+                                else:
+                                    temp_container = st.empty()
+                                    await typewriter_stream(
+                                        result, temp_container
+                                    )
+                                    message_stream.append(result)
+
+                            except Exception as ex:
+                                template = (
+                                    "An exception of type {0} occurred. "
+                                    "Arguments:\n{1!r}"
+                                )
+                                message = template.format(
+                                    type(ex).__name__, ex.args
+                                )
+                                st.error(message)
 
                 else:
-                    with st.status(
-                        "Generating answer...", expanded=True
-                    ) as status:
-                        async for result in answer_generation(
-                            chat_history,
-                            config,
-                            st.session_state.model,
-                            prev_generation,
-                        ):
-                            if result["type"] == "final_response":
-                                generation = result
-                            else:
-                                temp_container = st.empty()
-                                await typewriter_stream(result, temp_container)
+                    try:
+                        with st.status(
+                            "Generating answer...", expanded=True
+                        ) as status:
+                            async for result in answer_generation(
+                                chat_history,
+                                config,
+                                st.session_state.model,
+                                prev_generation,
+                            ):
+                                if result["type"] == "final_response":
+                                    generation = result
+                                else:
+                                    temp_container = st.empty()
+                                    await typewriter_stream(
+                                        result, temp_container
+                                    )
 
-                                message_stream.append(result)
+                                    message_stream.append(result)
 
-                        status.update(label="Answer generation successful.")
+                            status.update(
+                                label="Answer generation successful."
+                            )
+
+                    except Exception as ex:
+                        template = (
+                            "An exception of type {0} occurred. "
+                            "Arguments:\n{1!r}"
+                        )
+                        message = template.format(type(ex).__name__, ex.args)
+                        st.error(message)
 
                 with st.spinner("Generating answer..."):
                     st.session_state.run_id = cb.traced_runs[-1].id
@@ -275,7 +297,6 @@ async def main():
                     st.session_state.generation = generation["content"]
                     final_response = st.empty()
                     await typewriter_stream(generation, final_response)
-
             # final_response.write(generation)
 
     if st.session_state.get("run_id"):
@@ -310,6 +331,8 @@ async def main():
                     "feedback_id": str(feedback_record.id),
                     "score": score,
                 }
+
+                st.toast("Feedback logged!", icon=":material/reviews:")
 
             else:
                 st.warning("Invalid feedback score.")
