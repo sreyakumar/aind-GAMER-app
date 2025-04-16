@@ -1,6 +1,9 @@
-metadata-chatbot==0.0.80
+metadata-chatbot==0.5.1
 streamlit
 streamlit-feedback
 asyncio
 langchain_core
 langgraph
+langchain_anthropic
+streamlit_code_editor
+code_editor
