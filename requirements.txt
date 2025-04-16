@@ -6,4 +6,3 @@ langchain_core
 langgraph
 langchain_anthropic
 streamlit_code_editor
-code_editor
